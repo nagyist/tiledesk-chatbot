@@ -34,6 +34,7 @@ class Directives {
   static ASK_GPT = "askgpt";
   static ASK_GPT_V2 = "askgptv2";
   static GPT_TASK = "gpt_task";
+  static ASK_LLM = "askllm";
   /**** INTEGRATIONS ****/
   static QAPLA = 'qapla';
   static MAKE = 'make';
