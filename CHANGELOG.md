@@ -1,5 +1,8 @@
 # Tiledesk native chatbot
 
+# 2.0.44
+- Added support for mcp tools list in DirAiPrompt
+
 # 2.0.43
 - Added Iteration action
 
