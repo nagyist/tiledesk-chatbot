@@ -109,31 +109,13 @@ class DirAskGPTV2 {
   
     // default values
     let answer = "No answers";
-    let namespace = this.context.projectId;
-    let llm = "openai";
-    let model;
-    let temperature = 0.7;
-    let max_tokens = 256;
-    let top_k = 4;
-    let alpha;
-    let transcript;
-    let citations = false;
-    let chunks_only = false;
-    let engine;
-    let embedding;
-    let reranking;
-    let reranking_multiplier;
-    let skip_unanswered = false;
-    let source = null;
-
-    if (!action.llm) {
-      action.llm = "openai";
-    }
+    action.llm ??= "openai";
+    action.model ??= "gpt-4o";
 
     await this.checkMandatoryParameters(action).catch( async (missing_param) => {
       this.logger.error(`[Ask Knowledge Base] missing attribute '${missing_param}'`);
       await this.chatbot.addParameter("flowError", `AskKnowledgeBase Error: '${missing_param}' attribute is undefined`);
-      await this.#assignAttributes(action, answer, source);
+      await this.#assignAttributes(action, answer);
       if (falseIntent) {
         await this.#executeCondition(false, trueIntent, trueIntentAttributes, falseIntent, falseIntentAttributes);
         callback(true);
@@ -143,42 +125,22 @@ class DirAskGPTV2 {
       return Promise.reject();
     })
 
-    if (action.namespace) {
-      namespace = action.namespace;
-    }
-    if (action.llm) {
-      llm = action.llm;
-    }
-    if (action.model) {
-      model = action.model;
-    }
-    if (action.top_k) {
-      top_k = action.top_k;
-    }
-    if (action.temperature) {
-      temperature = action.temperature;
-    }
-    if (action.max_tokens) {
-      max_tokens = action.max_tokens;
-    }
-    if (action.alpha) {
-      alpha = action.alpha;
-    }
-    if (action.citations) {
-      citations = action.citations;
-    }
-    if (action.chunks_only) {
-      chunks_only = action.chunks_only;
-    }
-    if (action.reranking) {
-      reranking = action.reranking;
-    }
-    if (action.reranking_multiplier) {
-      reranking_multiplier = action.reranking_multiplier;
-    }
-    if (action.skip_unanswered) {
-      skip_unanswered = action.skip_unanswered;
-    }
+    const {
+      namespace = this.context.projectId,
+      llm,
+      model,
+      temperature = 0.7,
+      max_tokens = 2048,
+      top_k = 4,
+      alpha = 0.5,
+      citations = false,
+      chunks_only = false,
+      reranking = false,
+      reranking_multiplier = 3,
+      skip_unanswered = false,
+      use_hyde = false,
+      use_cache = false,
+    } = action;
 
     let requestVariables = null;
     requestVariables =
@@ -399,6 +361,14 @@ class DirAskGPTV2 {
       json.tags = action.tags;
     }
 
+    if (use_hyde) {
+      json.use_hyde = use_hyde;
+    }
+
+    if (use_cache) {
+      json.use_cache = use_cache;
+    }
+    
     winston.debug("DirAskGPTV2 json:", json);
 
     let kb_endpoint = process.env.KB_ENDPOINT_QA;
