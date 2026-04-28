@@ -96,22 +96,22 @@ class DirAskGPTV2 {
       callback();
       return;
     }
-
+    
     let trueIntent = action.trueIntent;
     let falseIntent = action.falseIntent;
     let trueIntentAttributes = action.trueIntentAttributes;
     let falseIntentAttributes = action.falseIntentAttributes;
-
+    
     winston.debug("DirAskGPTV2 trueIntent", trueIntent)
     winston.debug("DirAskGPTV2 falseIntent", falseIntent)
     winston.debug("DirAskGPTV2 trueIntentAttributes", trueIntentAttributes)
     winston.debug("DirAskGPTV2 falseIntentAttributes", falseIntentAttributes)
-  
+    
     // default values
     let answer = "No answers";
     action.llm ??= "openai";
     action.model ??= "gpt-4o";
-
+    
     await this.checkMandatoryParameters(action).catch( async (missing_param) => {
       this.logger.error(`[Ask Knowledge Base] missing attribute '${missing_param}'`);
       await this.chatbot.addParameter("flowError", `AskKnowledgeBase Error: '${missing_param}' attribute is undefined`);
@@ -125,7 +125,7 @@ class DirAskGPTV2 {
       return Promise.reject();
     })
 
-    const {
+    let {
       namespace = this.context.projectId,
       llm,
       model,
@@ -142,15 +142,18 @@ class DirAskGPTV2 {
       use_cache = false,
     } = action;
 
+    let transcript;
+    
     let requestVariables = null;
     requestVariables =
-      await TiledeskChatbot.allParametersStatic(
-        this.tdcache, this.requestId
-      );
-
+    await TiledeskChatbot.allParametersStatic(
+      this.tdcache, this.requestId
+    );
+    
     const filler = new Filler();
     const filled_question = filler.fill(action.question, requestVariables);
     const filled_context = filler.fill(action.context, requestVariables)
+    
 
     if (action.history) {
       this.logger.native("[Ask Knowledge Base] use chat transcript")
@@ -169,9 +172,10 @@ class DirAskGPTV2 {
         winston.verbose("DirAskGPT transcript_string is undefined. Skip JSON translation for chat history")
       }
     }
-
-    let key;
+    
     let publicKey = false;
+    let embedding;
+    let engine;
 
     try {
       model = await aiController.resolveLLMConfig(this.projectId, llm, model, this.token);
@@ -243,7 +247,7 @@ class DirAskGPTV2 {
     }
 
     let ns;
-
+    
     if (action.namespaceAsName) {
       // Namespace could be an attribute
       const filled_namespace = filler.fill(action.namespace, requestVariables)
@@ -268,7 +272,7 @@ class DirAskGPTV2 {
       callback();
       return;
     }
-
+    
     if (ns.engine) {
       engine = ns.engine;
     } else {
@@ -300,7 +304,7 @@ class DirAskGPTV2 {
     if (chunks_only) {
       json.chunks_only = chunks_only;
     }
-
+    
     if (ns.hybrid === true) {
       json.search_type = 'hybrid';
       json.alpha = alpha;
@@ -397,7 +401,7 @@ class DirAskGPTV2 {
             data: err.response?.data,
           });
           this.logger.error(`[Ask Knowledge Base] Error getting answer`);
-          await this.#assignAttributes(action, answer, source);
+          await this.#assignAttributes(action, answer);
           if (callback) {
             if (falseIntent) {
               await this.#executeCondition(false, trueIntent, trueIntentAttributes, falseIntent, falseIntentAttributes);
@@ -458,14 +462,14 @@ class DirAskGPTV2 {
           }
         } else {
           winston.info("DirAskGPTV2 resbody else case: ", resbody);
-          await this.#assignAttributes(action, answer, source);
+          await this.#assignAttributes(action, answer);
           if (!skip_unanswered) {
-            // console.log("this.context", JSON.stringify(this.context, null, 2));
             const data = {
               namespace: json.namespace,
               question: json.question,
               request_id: this.requestId
             }
+
             kbService.addUnansweredQuestion(this.projectId, data, this.token).catch((err) => {
               winston.error("DirAskGPTV2 - Error adding unanswered question: ", {
                 status: err.response?.status,
